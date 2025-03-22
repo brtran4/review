@@ -21,6 +21,8 @@ def create_pull_request(user, head_branch, base_branch, git_token):
     }
 
     title, description, sha = get_commit_message()
+    subprocess.check_output(["git", "push", "--force", "origin", "HEAD"])
+
     git_commits_api = "https://api.github.com/repos/{0}/{1}/commits/{2}/pulls".format(
         project_name,
         repo_name,
@@ -168,7 +170,7 @@ if __name__ == "__main__":
         is_new_pull_request = create_pull_request(
             conf[0], # current user
             get_git_branch(), # head_branch
-            "main", # base_branch TODO: change to automatically detect base branch
+            "dev", # base_branch TODO: change to automatically detect base branch
             conf[1], # git_token
         )
         if not is_new_pull_request:
