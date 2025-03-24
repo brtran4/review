@@ -10,7 +10,7 @@ repo_name = "naurffxiv" # TODO: get current repo
 git_pulls_api = "https://api.github.com/repos/{0}/{1}/pulls".format(
     project_name,
     repo_name
-)    
+)
 
 
 def create_pull_request(user, head_branch, base_branch, git_token):
@@ -32,11 +32,11 @@ def create_pull_request(user, head_branch, base_branch, git_token):
         git_commits_api,
         headers=headers,
     )
-    
+
     # a PR was found, update the PR instead
-    if r.status_code != 422:
+    if r.status_code == 422:
         return False
-    
+
     if subprocess.check_output(["git", "log", f"origin/{base_branch}..HEAD"]).decode("utf-8") == "":
         print("No changes detected")
         return
@@ -56,7 +56,7 @@ def create_pull_request(user, head_branch, base_branch, git_token):
     if not r.ok:
         print(f"Pull request updated for branch {head_branch}")
         return True
-    
+
     pull_request_result = r.json()
 
     # assign the current user to the pull request
@@ -108,7 +108,7 @@ def get_commit_message():
             if not message:
                 break
             description += message + "\n"
-    
+
     return title, description, sha
 
 def create_new_branch(new_branch, target_branch):
@@ -126,7 +126,7 @@ def config(git_username, access_token):
         "Authorization": "token {0}".format(access_token),
         "Content-Type": "application/json"
     }
-    
+
     git_find_user = "https://api.github.com/users/{0}".format(git_username)
     r = requests.get(git_find_user)
 
@@ -140,7 +140,7 @@ def config(git_username, access_token):
         repo_name,
     )
     r = requests.get(available_assignees, headers=headers)
-    
+
     try:
         if not any(user["login"] == git_username for user in r.json()):
             print("User is not in the repository. Contact Remengis to gain access.")
@@ -148,7 +148,7 @@ def config(git_username, access_token):
     except:
         print("Access token is not valid.")
         return
-    
+
     with open("config", "w") as f:
         f.write(f"{git_username}\n")
         f.write(f"{access_token}\n")
@@ -180,9 +180,7 @@ if __name__ == "__main__":
         git_username = input("Input your git username.\n")
         access_token = input("Input your git access token.\n")
         config(git_username, access_token)
-    
+
     # ./review new <BRANCH_NAME> <TARGET_BRANCH>
     elif len(sys.argv) == 4 and sys.argv[1] == "new":
         create_new_branch(sys.argv[2], sys.argv[3])
-
-    
