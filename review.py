@@ -91,10 +91,10 @@ def get_git_branch(path = None):
 def get_commit_message():
     '''Parses the first local commit message that have not been pushed remotely yet.'''
     # TODO: replace hardcoded dev with target branch
-    res = subprocess.check_output(["git", "log", "origin/dev..HEAD"]).decode("utf-8").split("\n")
+    res = subprocess.check_output(["git", "log", "--reverse", "origin/dev..HEAD"]).decode("utf-8").split("\n")
     title = ""
     description = ""
-    sha = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
+    sha = res[0].split()[1]  # assumes the first line is: "commit <hash>"
     title_parsed = False
 
     for line in res[4:]:
