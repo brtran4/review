@@ -1,16 +1,51 @@
+#!/usr/bin/env python3
+
 import json
 import requests
 import subprocess
-import typing
+from typing import Optional
 import os
 import sys
 
+def get_repo_name() -> Optional[str]:
+    result = subprocess.run(["git", "config", "--get", "remote.origin.url"], capture_output=True, text=True, cwd=os.getcwd())
+    if result.returncode != 0:
+        print("This is not a git repo.")
+        return None
+    else:
+        remote_url = result.stdout.strip()
+        if remote_url.endswith(".git"):
+            repo_name = remote_url[:-4].split("/")[-1]
+            return repo_name
+    return None
+
+def get_username() -> Optional[str]:
+    # Output is "Hi <GitHub username>! You've successfully authenticated, but GitHub does not provide shell access.
+    result = subprocess.run(["ssh", "-T", "git@github.com"], capture_output=True, text=True, cwd=os.getcwd())
+    text = result.stderr
+    if result.returncode != 1:
+        print("User not found with GitHub. Set up ssh access with GitHub to continue.")
+        return None
+    else:
+        return text.split()[1].strip("!")
+
 project_name = "naurffxiv"
-repo_name = "naurffxiv"  # TODO: get current repo
 git_pulls_api = "https://api.github.com/repos/{0}/{1}/pulls".format(
-    project_name, repo_name
+    project_name, get_repo_name()
 )
 
+def get_target_branch() -> Optional[str]:
+    result = subprocess.run(
+        ['git', 'rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'],
+        capture_output=True, text=True, cwd=os.getcwd()
+    )
+
+    if result.returncode == 0:
+        remote_branch = result.stdout.strip()
+        # Extract just the branch name (remove remote/ prefix)
+        if '/' in remote_branch:
+            return remote_branch.split('/', 1)[1]
+    return None
 
 def create_pull_request(user, head_branch, base_branch, git_token):
     """Creates the pull request for the head_branch against the base_branch"""
@@ -24,7 +59,7 @@ def create_pull_request(user, head_branch, base_branch, git_token):
 
     git_commits_api = "https://api.github.com/repos/{0}/{1}/commits/{2}/pulls".format(
         project_name,
-        repo_name,
+        get_repo_name(),
         sha,
     )
     r = requests.get(
@@ -61,12 +96,10 @@ def create_pull_request(user, head_branch, base_branch, git_token):
     pull_request_result = r.json()
 
     # assign the current user to the pull request
-    git_assignee_api = (
-        "https://api.github.com/repos/{0}/{1}/issues/{2}/assignees".format(
-            project_name,
-            repo_name,
-            str(pull_request_result["number"]),
-        )
+    git_assignee_api = "https://api.github.com/repos/{0}/{1}/issues/{2}/assignees".format(
+        project_name,
+        get_repo_name(),
+        str(pull_request_result["number"]),
     )
 
     data = {
@@ -91,9 +124,8 @@ def get_git_branch(path=None):
 
 def get_commit_message():
     """Parses the first local commit message that have not been pushed remotely yet."""
-    # TODO: replace hardcoded dev with target branch
     res = (
-        subprocess.check_output(["git", "log", "--reverse", "origin/dev..HEAD"])
+        subprocess.check_output(["git", "log", "--reverse", f"origin/{get_target_branch()}..HEAD"])
         .decode("utf-8")
         .split("\n")
     )
@@ -146,7 +178,7 @@ def config(git_username, access_token):
     # check for available assignees in the repo
     available_assignees = "https://api.github.com/repos/{0}/{1}/assignees".format(
         project_name,
-        repo_name,
+        get_repo_name(),
     )
     r = requests.get(available_assignees, headers=headers)
 
@@ -165,22 +197,22 @@ def config(git_username, access_token):
 
 
 if __name__ == "__main__":
-    print(sys.argv)
     # ./review
+    print(get_username())
     if len(sys.argv) == 1:
-        conf = []
+        key = ""
         try:
-            with open("config") as file:
-                for line in file:
-                    conf.append(line.strip())
+            with open("/home/brtran/.ssh/github-api-key", "r") as f:  # git_token
+                key = f.read().strip()
         except:
-            print("No config file found. Run: ./review config")
+            print("Generate an api key and store it in ~/.ssh/github-api-key")
+            sys.exit()
 
         is_new_pull_request = create_pull_request(
-            conf[0],  # current user
-            get_git_branch(),  # head_branch
-            "dev",  # base_branch TODO: change to automatically detect base branch
-            conf[1],  # git_token
+            get_username(),  # current user
+            get_git_branch(),  # branch you're currently on
+            get_target_branch(), # target branch
+            key,
         )
         if not is_new_pull_request:
             update_pull_request()

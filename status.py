@@ -1,12 +1,14 @@
+#!/usr/bin/env python3
+
 import json
 import requests
 import os
 import sys
 from prettytable import PrettyTable
 from datetime import datetime, timezone
+from review import get_username
 
-naur_repo_names = ["moddingway", "naurffxiv"]
-atmus_repo_names = ["clearingway", "findingway", "infraway"]
+naur_repo_names = ["moddingway", "naurffxiv", "clearingway", "findingway", "raidingway"]
 github_api = "https://api.github.com/repos"
 
 
@@ -34,21 +36,13 @@ class PullRequest:
         self.last_updated = last_updated
 
 
-def get_config():
-    config = []
-    try:
-        with open("config") as file:
-            for line in file:
-                config.append(line.strip())
-    except:
-        print("No config file found. Run: ./review config")
-
-    username, git_token = config
-    return username, git_token
-
-
 def get_pull_requests():
-    username, git_token = get_config()
+    key = ""
+    with open("/home/brtran/.ssh/github-api-key", "r") as f:  # git_token
+        key = f.read().strip()
+
+    username = get_username()
+    git_token = key
     headers = {
         "Authorization": "token {0}".format(git_token),
         "Content-Type": "application/json",
@@ -115,13 +109,6 @@ def get_pull_requests():
         t.align["Last Updated"] = "l"
         print(t)
 
-        # for repo in atmus_repo_names:
-        #     print(f"{github_api}/Veraticus/{repo}/pulls")
-        #     response = requests.get(f"{github_api}/naurffxiv/{repo}/pulls")
-        #     print(response.json())
-        #     for res in response.json():
-        #         print(res["requested_reviewers"])
-
 
 def get_pull_request_reviews(id, repo, headers):
     res = requests.get(
@@ -140,4 +127,5 @@ def get_pull_request_reviews(id, repo, headers):
     return approved_count, review_count, approved_by_me
 
 
-get_pull_requests()
+if __name__ == "__main__":
+    get_pull_requests()
