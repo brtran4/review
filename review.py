@@ -29,7 +29,11 @@ def get_username() -> Optional[str]:
     else:
         return text.split()[1].strip("!")
 
-project_name = "naurffxiv"
+project_name = subprocess.run(
+    ['git', 'remote', 'get-url', 'origin'],
+    capture_output=True, text=True,
+).stdout.split(':', 1)[-1].split('/', 1)[0]
+
 git_pulls_api = "https://api.github.com/repos/{0}/{1}/pulls".format(
     project_name, get_repo_name()
 )
@@ -198,14 +202,13 @@ def config(git_username, access_token):
 
 if __name__ == "__main__":
     # ./review
-    print(get_username())
     if len(sys.argv) == 1:
         key = ""
         try:
-            with open("/home/brtran/.ssh/github-api-key", "r") as f:  # git_token
+            with open(f"/home/brtran/.ssh/{project_name}-github-api-key", "r") as f:  # git_token
                 key = f.read().strip()
         except:
-            print("Generate an api key and store it in ~/.ssh/github-api-key")
+            print("Generate an api key and store it in ~/.ssh/{project_name}-github-api-key")
             sys.exit()
 
         is_new_pull_request = create_pull_request(

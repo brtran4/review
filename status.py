@@ -4,11 +4,12 @@ import json
 import requests
 import os
 import sys
+import subprocess
 from prettytable import PrettyTable
 from datetime import datetime, timezone
 from review import get_username
 
-naur_repo_names = ["moddingway", "naurffxiv", "clearingway", "findingway", "raidingway"]
+naur_repo_names = ["moddingway", "naurffxiv", "clearingway", "findingway", "raidingway", "templatingway"]
 github_api = "https://api.github.com/repos"
 
 
@@ -38,7 +39,13 @@ class PullRequest:
 
 def get_pull_requests():
     key = ""
-    with open("/home/brtran/.ssh/github-api-key", "r") as f:  # git_token
+    project_name = subprocess.run(
+        ['git', 'remote', 'get-url', 'origin'],
+        capture_output=True, text=True,
+    ).stdout.split(':', 1)[-1].split('/', 1)[0]
+    if project_name == "":
+        project_name = "naur"
+    with open(f"/home/brtran/.ssh/{project_name}-github-api-key", "r") as f:  # git_token
         key = f.read().strip()
 
     username = get_username()
@@ -53,6 +60,7 @@ def get_pull_requests():
         "findingway": [],
         "clearingway": [],
         "raidingway": [],
+        "templatingway": [],
     }
     for repo in naur_repo_names:
         # print(f"{github_api}/naurffxiv/{repo}/pulls")
